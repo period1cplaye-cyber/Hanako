@@ -24,6 +24,8 @@ private:
     virtual bool Lock(int timeout_ms = 0) override;
     virtual void Unlock() override;
 
+    void SetStatus(const char* status) override;
+
     void SetupUI_128x64();
     void SetupUI_128x32();
 
