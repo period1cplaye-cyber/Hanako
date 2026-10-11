@@ -11,12 +11,15 @@
 
 #ifdef AUDIO_I2S_METHOD_SIMPLEX
 
-#define AUDIO_I2S_MIC_GPIO_WS   GPIO_NUM_4
-#define AUDIO_I2S_MIC_GPIO_SCK  GPIO_NUM_5
-#define AUDIO_I2S_MIC_GPIO_DIN  GPIO_NUM_6
-#define AUDIO_I2S_SPK_GPIO_DOUT GPIO_NUM_7
-#define AUDIO_I2S_SPK_GPIO_BCLK GPIO_NUM_15
-#define AUDIO_I2S_SPK_GPIO_LRCK GPIO_NUM_16
+// --- UBAH: Pin Mikrofon INMP441 (I2S RX) ---
+#define AUDIO_I2S_MIC_GPIO_WS   GPIO_NUM_10 // Awalnya 4, diubah ke 10 (WS)
+#define AUDIO_I2S_MIC_GPIO_SCK  GPIO_NUM_9  // Awalnya 5, diubah ke 9 (SCK)
+#define AUDIO_I2S_MIC_GPIO_DIN  GPIO_NUM_11 // Awalnya 6, diubah ke 11 (SD)
+
+// --- UBAH: Pin Speaker MAX98357A (I2S TX) ---
+#define AUDIO_I2S_SPK_GPIO_DOUT GPIO_NUM_14 // Awalnya 7, diubah ke 14 (DIN)
+#define AUDIO_I2S_SPK_GPIO_BCLK GPIO_NUM_12 // Awalnya 15, diubah ke 12 (BCLK)
+#define AUDIO_I2S_SPK_GPIO_LRCK GPIO_NUM_13 // Awalnya 16, diubah ke 13 (LRC)
 
 #else
 
@@ -29,13 +32,16 @@
 
 
 #define BUILTIN_LED_GPIO        GPIO_NUM_48
-#define BOOT_BUTTON_GPIO        GPIO_NUM_0
-#define TOUCH_BUTTON_GPIO       GPIO_NUM_47
+// --- UBAH: Pin Sensor Sentuh TTP223 ---
+// --- UBAH: Pin Sensor Sentuh TTP223 ---
+#define BOOT_BUTTON_GPIO        GPIO_NUM_0  // Kembalikan ke tombol Boot bawaan ESP32
+#define TOUCH_BUTTON_GPIO       GPIO_NUM_4  // Aktifkan sensor sentuh TTP223 di sini// Dimatikan (-1) agar tidak bentrok
 #define VOLUME_UP_BUTTON_GPIO   GPIO_NUM_40
 #define VOLUME_DOWN_BUTTON_GPIO GPIO_NUM_39
 
-#define DISPLAY_SDA_PIN GPIO_NUM_41
-#define DISPLAY_SCL_PIN GPIO_NUM_42
+// --- UBAH: Pin Layar OLED SSD1306 (I2C) ---
+#define DISPLAY_SDA_PIN GPIO_NUM_8 // Awalnya 41, diubah ke 8 (SDA)
+#define DISPLAY_SCL_PIN GPIO_NUM_7 // Awalnya 42, diubah ke 7 (SCL)
 #define DISPLAY_WIDTH   128
 
 #if CONFIG_OLED_SSD1306_128X32

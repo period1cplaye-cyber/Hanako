@@ -101,27 +101,34 @@ private:
     }
 
     void InitializeButtons() {
-        boot_button_.OnClick([this]() {
-            auto& app = Application::GetInstance();
-            if (app.GetDeviceState() == kDeviceStateStarting) {
-                EnterWifiConfigMode();
-                return;
-            }
-            app.ToggleChatState();
-        });
+        // ========================================================
+        // SENSOR SENTUH TTP223 - KHUSUS PUSH-TO-TALK & MUTE AI
+        // ========================================================
         touch_button_.OnPressDown([this]() {
             Application::GetInstance().StartListening();
         });
+
         touch_button_.OnPressUp([this]() {
             Application::GetInstance().StopListening();
         });
 
+        // ========================================================
+        // TOMBOL FISIK BOOT - KHUSUS WIFI CONFIG
+        // ========================================================
+        boot_button_.OnClick([this]() {
+            auto& app = Application::GetInstance();
+            if (app.GetDeviceState() == kDeviceStateStarting) {
+                EnterWifiConfigMode();
+            }
+        });
+
+        // ========================================================
+        // KONTROL VOLUME
+        // ========================================================
         volume_up_button_.OnClick([this]() {
             auto codec = GetAudioCodec();
             auto volume = codec->output_volume() + 10;
-            if (volume > 100) {
-                volume = 100;
-            }
+            if (volume > 100) volume = 100;
             codec->SetOutputVolume(volume);
             GetDisplay()->ShowNotification(Lang::Strings::VOLUME + std::to_string(volume));
         });
@@ -134,9 +141,7 @@ private:
         volume_down_button_.OnClick([this]() {
             auto codec = GetAudioCodec();
             auto volume = codec->output_volume() - 10;
-            if (volume < 0) {
-                volume = 0;
-            }
+            if (volume < 0) volume = 0;
             codec->SetOutputVolume(volume);
             GetDisplay()->ShowNotification(Lang::Strings::VOLUME + std::to_string(volume));
         });
@@ -147,7 +152,6 @@ private:
         });
     }
 
-    // 物联网初始化，逐步迁移到 MCP 协议
     void InitializeTools() {
         static LampController lamp(LAMP_GPIO);
     }
@@ -155,7 +159,7 @@ private:
 public:
     CompactWifiBoard() :
         boot_button_(BOOT_BUTTON_GPIO),
-        touch_button_(TOUCH_BUTTON_GPIO),
+        touch_button_(TOUCH_BUTTON_GPIO, true), 
         volume_up_button_(VOLUME_UP_BUTTON_GPIO),
         volume_down_button_(VOLUME_DOWN_BUTTON_GPIO) {
         InitializeDisplayI2c();
@@ -177,6 +181,10 @@ public:
         static NoAudioCodecDuplex audio_codec(AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
             AUDIO_I2S_GPIO_BCLK, AUDIO_I2S_GPIO_WS, AUDIO_I2S_GPIO_DOUT, AUDIO_I2S_GPIO_DIN);
 #endif
+        
+        // Mengurangi sensitivitas gain mikrofon menjadi 3.0
+        audio_codec.SetInputGain(3.0); 
+
         return &audio_codec;
     }
 
