@@ -11,8 +11,10 @@ class FaceEngine {
 public:
     ~FaceEngine();
 
-    // Harus dipanggil dengan lock LVGL/display sudah dipegang.
-    void Init(lv_obj_t* parent);
+    // Dipanggil dengan lock LVGL/display sudah dipegang.
+    // Wajah digambar di area (x, y, width, height) pada layar; semua ukuran
+    // mata/mulut diturunkan dari width & height, jadi area bisa diubah bebas.
+    void Init(lv_obj_t* parent, int x, int y, int width, int height);
 
     // Aman dipanggil dari task lain (hanya menulis enum atomic).
     void SetState(FaceState state);
@@ -25,10 +27,8 @@ private:
     void ListeningBehavior(int base_eye_height);
     void SpeakingBehavior(int eye_height);
 
-    // Helper agar posisi/ukuran mata dan mulut konsisten di semua state.
     void SetEyes(int left_h, int right_h, int dx, int dy);
     void SetMouth(int w, int h, int radius, int dx, int dy);
-    int EyeWidth() const { return eye_size_ * 65 / 100; }
 
     lv_obj_t* container_ = nullptr;
     lv_obj_t* left_eye_ = nullptr;
@@ -38,7 +38,15 @@ private:
 
     std::atomic<FaceState> state_{FaceState::Idle};
 
-    int eye_size_ = 30;
+    // Geometri (dihitung di Init dari ukuran area wajah)
+    int face_w_ = 128;
+    int face_h_ = 32;
+    int eye_h_ = 16;
+    int eye_w_ = 11;
+    int eye_dx_ = 26;
+    int eye_dy_ = -3;
+    int mouth_dy_ = 10;
+    int mouth_max_ = 8;
 
     int idle_move_offset_x_ = 0;
     int idle_move_offset_y_ = 0;
