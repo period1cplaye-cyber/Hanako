@@ -26,7 +26,6 @@ private:
 
     void SetStatus(const char* status) override;
 
-    void SetupUI_128x64();
     void SetupUI_128x32();
 
 public:
