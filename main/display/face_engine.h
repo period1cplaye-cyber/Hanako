@@ -3,12 +3,21 @@
 #include <lvgl.h>
 #include <stdint.h>
 
+#include <atomic>
+
 enum class FaceState { Idle, Listening, Speaking };
 
 class FaceEngine {
 public:
+    ~FaceEngine();
+
+    // Harus dipanggil dengan lock LVGL/display sudah dipegang.
     void Init(lv_obj_t* parent);
+
+    // Aman dipanggil dari task lain (hanya menulis enum atomic).
     void SetState(FaceState state);
+
+    // Dipanggil oleh timer LVGL (sudah di dalam lock LVGL).
     void Update();
 
 private:
@@ -16,12 +25,18 @@ private:
     void ListeningBehavior(int base_eye_height);
     void SpeakingBehavior(int eye_height);
 
+    // Helper agar posisi/ukuran mata dan mulut konsisten di semua state.
+    void SetEyes(int left_h, int right_h, int dx, int dy);
+    void SetMouth(int w, int h, int radius, int dx, int dy);
+    int EyeWidth() const { return eye_size_ * 65 / 100; }
+
     lv_obj_t* container_ = nullptr;
     lv_obj_t* left_eye_ = nullptr;
     lv_obj_t* right_eye_ = nullptr;
     lv_obj_t* mouth_ = nullptr;
+    lv_timer_t* timer_ = nullptr;
 
-    FaceState state_ = FaceState::Idle;
+    std::atomic<FaceState> state_{FaceState::Idle};
 
     int eye_size_ = 30;
 

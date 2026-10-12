@@ -5,6 +5,7 @@
 #include "settings.h"
 
 #include <algorithm>
+#include <cstring>
 #include <string>
 
 #include <esp_err.h>
@@ -15,27 +16,23 @@
 
 #define TAG "OledDisplay"
 
-#include "face_engine.h"
-
-#define TAG "OledDisplay"
-
-FaceEngine* face_engine_ = nullptr;
-
+LV_FONT_DECLARE(BUILTIN_TEXT_FONT);
+LV_FONT_DECLARE(BUILTIN_ICON_FONT);
+LV_FONT_DECLARE(font_material_symbols_30_1);
+LV_FONT_DECLARE(font_noto_emoji_30_1);
 
 void OledDisplay::SetStatus(const char* status) {
-    // Call base implementation (keeps logging + any future logic)
-    //Display::SetStatus(status); //Uncomment in future releases if base class implementation is added
-
-    if (!face_engine_)
+    // Status text tidak ditampilkan di layout wajah; status hanya dipetakan ke ekspresi.
+    // (Display::SetStatus(status) sengaja tidak dipanggil.)
+    if (face_engine_ == nullptr || status == nullptr)
         return;
 
-    if (strcmp(status, Lang::Strings::STANDBY) == 0) {
-        face_engine_->SetState(FaceState::Idle);
-    } else if (strcmp(status, Lang::Strings::LISTENING) == 0) {
+    if (strcmp(status, Lang::Strings::LISTENING) == 0) {
         face_engine_->SetState(FaceState::Listening);
     } else if (strcmp(status, Lang::Strings::SPEAKING) == 0) {
         face_engine_->SetState(FaceState::Speaking);
     } else {
+        // STANDBY dan semua status lain (connecting, upgrading, dll) -> Idle
         face_engine_->SetState(FaceState::Idle);
     }
 }
@@ -45,8 +42,6 @@ void OledDisplay::SetupUI_128x64() {
 
     auto lvgl_theme = static_cast<LvglTheme*>(current_theme_);
     auto text_font = lvgl_theme->text_font()->font();
-    auto icon_font = lvgl_theme->icon_font()->font();
-    auto large_icon_font = lvgl_theme->large_icon_font()->font();
 
     auto screen = lv_screen_active();
     lv_obj_set_style_text_font(screen, text_font, 0);
@@ -60,13 +55,13 @@ void OledDisplay::SetupUI_128x64() {
     lv_obj_set_style_border_width(container_, 0, 0);
     lv_obj_set_style_pad_row(container_, 0, 0);
 
-    /* Content */
+    /* Content (area wajah, memenuhi seluruh layar) */
     content_ = lv_obj_create(container_);
     lv_obj_set_scrollbar_mode(content_, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_radius(content_, 0, 0);
     lv_obj_set_style_pad_all(content_, 0, 0);
-    lv_obj_set_width(content_, LV_HOR_RES);
-    lv_obj_set_size(content_, 128, 48);
+    lv_obj_set_style_border_width(content_, 0, 0);
+    lv_obj_set_size(content_, LV_HOR_RES, LV_VER_RES);
     lv_obj_set_flex_grow(content_, 1);
 
     lv_obj_set_flex_flow(content_, LV_FLEX_FLOW_COLUMN);
@@ -76,11 +71,6 @@ void OledDisplay::SetupUI_128x64() {
     face_engine_ = new FaceEngine();
     face_engine_->Init(content_);
 }
-
-LV_FONT_DECLARE(BUILTIN_TEXT_FONT);
-LV_FONT_DECLARE(BUILTIN_ICON_FONT);
-LV_FONT_DECLARE(font_material_symbols_30_1);
-LV_FONT_DECLARE(font_noto_emoji_30_1);
 
 OledDisplay::OledDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_handle_t panel,
                          int width, int height, bool mirror_x, bool mirror_y)
@@ -145,18 +135,18 @@ OledDisplay::OledDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_handl
         return;
     }
 
-    // Note: SetupUI() should be called by Application::Initialize(), not in constructor
-    // to ensure lvgl objects are created after the display is fully initialized.
+    // Note: SetupUI() dipanggil oleh Application::Initialize(), bukan di konstruktor,
+    // supaya objek LVGL dibuat setelah display siap sepenuhnya.
 }
 
 void OledDisplay::SetupUI() {
-    // Prevent duplicate calls - if already called, return early
+    // Cegah pemanggilan ganda
     if (setup_ui_called_) {
         ESP_LOGW(TAG, "SetupUI() called multiple times, skipping duplicate call");
         return;
     }
 
-    Display::SetupUI();  // Mark SetupUI as called
+    Display::SetupUI();  // Tandai SetupUI sudah dipanggil
     if (height_ == 64) {
         SetupUI_128x64();
     } else {
@@ -165,6 +155,15 @@ void OledDisplay::SetupUI() {
 }
 
 OledDisplay::~OledDisplay() {
+    {
+        // Hentikan timer wajah sebelum objek LVGL-nya dihapus.
+        DisplayLockGuard lock(this);
+        if (face_engine_ != nullptr) {
+            delete face_engine_;
+            face_engine_ = nullptr;
+        }
+    }
+
     if (content_ != nullptr) {
         lv_obj_del(content_);
     }
@@ -210,7 +209,7 @@ void OledDisplay::Unlock() { lvgl_port_unlock(); }
 
 void OledDisplay::SetChatMessage(const char* role, const char* content) {
     DisplayLockGuard lock(this);
-    if (chat_message_label_ == nullptr) {
+    if (chat_message_label_ == nullptr || content == nullptr) {
         return;
     }
 
@@ -222,7 +221,7 @@ void OledDisplay::SetChatMessage(const char* role, const char* content) {
     if (content_right_ == nullptr) {
         lv_label_set_text(chat_message_label_, content_str.c_str());
     } else {
-        if (content == nullptr || content[0] == '\0') {
+        if (content[0] == '\0') {
             lv_obj_add_flag(content_right_, LV_OBJ_FLAG_HIDDEN);
         } else {
             lv_label_set_text(chat_message_label_, content_str.c_str());
@@ -230,8 +229,6 @@ void OledDisplay::SetChatMessage(const char* role, const char* content) {
         }
     }
 }
-
-
 
 void OledDisplay::SetupUI_128x32() {
     DisplayLockGuard lock(this);
@@ -331,7 +328,7 @@ void OledDisplay::SetEmotion(const char* emotion) {
     }
     DisplayLockGuard lock(this);
     if (emotion_label_ == nullptr) {
-        return;
+        return;  // layout 128x64 (wajah) tidak memakai emotion label
     }
     if (utf8 != nullptr) {
         lv_obj_set_style_text_font(emotion_label_, emotion_font, 0);
